@@ -109,10 +109,7 @@ Mở Jupyter và chạy lần lượt các notebook trong thư mục `notebooks/
 - Dự báo nhu cầu năng lượng (MAE, RMSE, sMAPE)
 
 ## Nhóm thực hiện
-- Thành viên 1: [Tên]
-- Thành viên 2: [Tên]
-- Thành viên 3: [Tên]
-- Thành viên 4: [Tên]
+- Thành viên 1: Nguyễn Việt Quang
 
-## Giảng viên hướng dẫn
+# Giảng viên hướng dẫn
 Lê Thị Thùy Trang
