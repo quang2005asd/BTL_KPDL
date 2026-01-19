@@ -1,0 +1,143 @@
+# ====================================
+# CONFIGURATION FILE - ENERGY FORECASTING PROJECT
+# ====================================
+
+# Random seed for reproducibility
+seed: 42
+
+# Data paths
+data:
+  raw_file: "data/raw/household_power_consumption.txt"
+  processed_dir: "data/processed/"
+  
+# Output paths
+output:
+  figures: "outputs/figures/"
+  tables: "outputs/tables/"
+  models: "outputs/models/"
+  reports: "outputs/reports/"
+
+# Data preprocessing
+preprocessing:
+  # Missing value handling
+  missing_threshold: 0.3  # Drop columns with >30% missing
+  fill_method: "interpolate"  # or "forward", "mean"
+  
+  # Outlier detection
+  outlier_method: "iqr"  # or "zscore", "isolation_forest"
+  outlier_threshold: 3.0
+  
+  # Resampling
+  resample_freq: "1H"  # Aggregate to hourly (original is 1 minute)
+  agg_method: "mean"
+
+# Feature engineering
+features:
+  # Time features
+  create_time_features: true
+  include_hour: true
+  include_day_of_week: true
+  include_month: true
+  include_season: true
+  include_is_weekend: true
+  
+  # Lag features for forecasting
+  lag_periods: [1, 24, 168]  # 1h, 1day, 1week (hourly data)
+  
+  # Rolling statistics
+  rolling_windows: [24, 168]  # 1day, 1week
+  rolling_stats: ["mean", "std", "min", "max"]
+  
+  # Power state discretization for association mining
+  power_bins: 3  # Low/Medium/High
+  bin_labels: ["off-peak", "normal", "peak"]
+
+# Association mining (Apriori)
+association:
+  min_support: 0.01
+  min_confidence: 0.5
+  min_lift: 1.2
+  max_len: 3  # Maximum itemset length
+
+# Clustering
+clustering:
+  # Feature aggregation for household profiles
+  profile_features:
+    - "mean_power"
+    - "std_power"
+    - "peak_hour"
+    - "night_consumption_ratio"
+    - "weekend_avg"
+    - "weekday_avg"
+  
+  # Normalization
+  scaler: "standard"  # or "minmax", "robust"
+  
+  # KMeans
+  kmeans:
+    n_clusters: 4
+    max_iter: 300
+    n_init: 10
+  
+  # Hierarchical
+  hierarchical:
+    n_clusters: 4
+    linkage: "ward"
+  
+  # DBSCAN
+  dbscan:
+    eps: 0.5
+    min_samples: 5
+
+# Anomaly detection
+anomaly:
+  method: "isolation_forest"  # or "local_outlier_factor", "zscore"
+  contamination: 0.05  # Expected proportion of outliers
+  
+  # Evaluation
+  evaluate_by_season: true
+
+# Time series forecasting
+forecasting:
+  # Train-test split (time-based)
+  test_size_days: 90  # Last 90 days for testing
+  validation_size_days: 30  # 30 days before test for validation
+  
+  # Baseline
+  baseline_method: "seasonal_naive"
+  seasonal_period: 168  # Weekly seasonality (hourly data)
+  
+  # ARIMA
+  arima:
+    auto: true  # Use auto_arima
+    seasonal: true
+    m: 24  # Daily seasonality for hourly data
+    max_p: 5
+    max_q: 5
+    max_P: 2
+    max_Q: 2
+  
+  # ETS (Exponential Smoothing)
+  ets:
+    seasonal: "add"  # or "mul"
+    seasonal_periods: 24
+  
+  # Holt-Winters
+  holt_winters:
+    seasonal: "add"  # or "mul"
+    seasonal_periods: 24
+    trend: "add"
+  
+  # Evaluation metrics
+  metrics:
+    - "mae"
+    - "rmse"
+    - "mape"
+    - "smape"
+
+# Visualization settings
+visualization:
+  style: "seaborn-v0_8-darkgrid"
+  figure_size: [12, 6]
+  dpi: 100
+  save_format: "png"
