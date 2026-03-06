@@ -26,15 +26,15 @@ Method: KMeans
 ANOMALY DETECTION
 --------------------------------------------------------------------------------
 Method: Isolation Forest
-Seasons Analyzed: N/A
+Seasons Analyzed: 4
 
 
 FORECASTING
 --------------------------------------------------------------------------------
-Models Tested: N/A
-Best Model: N/A
-Best MAE: N/A
-Best RMSE: N/A
+Models Tested: 4
+Best Model: Holt-Winters
+Best MAE: 0.3203
+Best RMSE: 0.3342
 
 
 ================================================================================
