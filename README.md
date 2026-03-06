@@ -14,6 +14,55 @@ Dự án khai phá dữ liệu để phân tích và dự báo nhu cầu năng l
   - `Global_intensity`: Cường độ dòng điện (A)
   - `Sub_metering_1/2/3`: Tiêu thụ điện của các thiết bị con
 
+## Data Dictionary
+
+| Tên cột | Ý nghĩa | Đơn vị | Khoảng giá trị | Target/Feature |
+|---------|---------|--------|----------------|----------------|
+| `Date` | Ngày đo | - | 2006-12-16 đến 2010-11-26 | Index |
+| `Time` | Thời gian đo | - | 00:00:00 đến 23:59:00 | Index |
+| `Global_active_power` | Công suất hoạt động trung bình (toàn nhà) | kilowatt (kW) | 0.076 - 11.122 | **Target** (dự báo) |
+| `Global_reactive_power` | Công suất phản kháng | kilowatt (kW) | 0.0 - 1.39 | Feature |
+| `Voltage` | Điện áp | volt (V) | 223.2 - 254.15 | Feature |
+| `Global_intensity` | Cường độ dòng điện | ampere (A) | 0.2 - 48.4 | Feature |
+| `Sub_metering_1` | Tiêu thụ bếp (dishwasher, oven, microwave) | watt-hour (Wh) | 0 - 88 | Feature |
+| `Sub_metering_2` | Tiêu thụ phòng giặt (washing machine, dryer, light) | watt-hour (Wh) | 0 - 80 | Feature |
+| `Sub_metering_3` | Tiêu thụ điều hòa & nước nóng | watt-hour (Wh) | 0 - 31 | Feature |
+
+**Tổng số records**: 2,075,259 (gần 4 năm dữ liệu)
+
+## Data Quality Issues & Solutions
+
+### 1. Missing Values (~1.25%)
+- **Vấn đề**: 25,979 records có giá trị "?" (missing)
+- **Nguyên nhân**: Lỗi đọc từ sensor/meter
+- **Giải pháp**: 
+  - Time-series interpolation (linear) cho missing ngắn (<1h)
+  - Forward fill cho missing dài hơn
+  - Drop nếu toàn bộ row missing
+
+### 2. Outliers (~3%)
+- **Vấn đề**: Giá trị bất thường (spike đột ngột, giá trị 0 bất thường)
+- **Phát hiện**: IQR method (Q1 - 1.5*IQR, Q3 + 1.5*IQR)
+- **Giải pháp**: 
+  - Capping tại boundary thay vì remove (giữ lại data points)
+  - Phân tích riêng outliers như anomaly detection task
+
+### 3. Data Leakage Risk
+- **Risk**: Time series có thể leak future information vào past
+- **Prevention**: 
+  - **Time-based split**: Train 70%, Val 15%, Test 15% theo thứ tự thời gian
+  - **No shuffling**: Giữ nguyên thứ tự chronological
+  - **Feature engineering**: Chỉ dùng lag features (past → predict future)
+  - **Cross-validation**: Time Series Split (không dùng K-Fold random)
+
+### 4. Class Imbalance
+- **N/A**: Đây là bài toán regression (dự báo giá trị liên tục), không có class imbalance
+
+### 5. Data Drift
+- **Vấn đề tiềm ẩn**: Hành vi tiêu thụ có thể thay đổi theo năm (mua thiết bị mới, thay đổi thói quen)
+- **Monitor**: Kiểm tra distribution shift giữa train/test
+- **Mitigation**: Seasonal decomposition, adaptive models
+
 ## Mục tiêu
 1. **Khai phá mẫu (Association Mining)**: Tìm các pattern sử dụng điện năng (thiết bị/trạng thái đồng xuất hiện)
 2. **Phân cụm (Clustering)**: Phân loại hộ gia đình theo profile tiêu thụ (night-owl, peak-heavy, stable...)
