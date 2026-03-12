@@ -301,5 +301,156 @@ class ResidualAnalyzer:
         return seasonal_stats
 
 
+class TrainingDataEfficiencyAnalyzer:
+    """
+    Analyze model performance vs training data size
+    
+    This is equivalent to semi-supervised learning analysis:
+    - In classification: Limited labeled data (10-30% labeled)
+    - In forecasting: Limited training time-series data (10-100% of available data)
+    
+    Goal: Determine minimum training data needed for acceptable performance
+    """
+    
+    @staticmethod
+    def learning_curve_experiment(
+        train_data: pd.Series,
+        test_data: pd.Series,
+        model_class,
+        train_percentages: List[int] = [10, 25, 50, 75, 100],
+        model_params: Optional[Dict[str, Any]] = None,
+        forecast_steps: Optional[int] = None
+    ) -> pd.DataFrame:
+        """
+        Run learning curve experiment: Train models with different % of training data
+        
+        Args:
+            train_data: Full training time series
+            test_data: Test time series
+            model_class: Model class to use (e.g., ExponentialSmoothing)
+            train_percentages: List of training data percentages to test
+            model_params: Model parameters (e.g., seasonal='add', seasonal_periods=24)
+            forecast_steps: Number of steps to forecast (default: len(test_data))
+            
+        Returns:
+            DataFrame with columns: train_pct, train_size, mae, rmse, smape, training_time
+        """
+        import time
+        
+        if model_params is None:
+            model_params = {}
+        
+        if forecast_steps is None:
+            forecast_steps = len(test_data)
+        
+        results = []
+        
+        for pct in train_percentages:
+            # Subset training data
+            train_size = max(int(len(train_data) * pct / 100), 24)  # Minimum 24 points for daily seasonality
+            train_subset = train_data[-train_size:]  # Use most recent data
+            
+            try:
+                # Train model and measure time
+                start_time = time.time()
+                model = model_class(train_subset, **model_params)
+                model_fit = model.fit()
+                training_time = time.time() - start_time
+                
+                # Forecast
+                forecast = model_fit.forecast(steps=forecast_steps)
+                
+                # Calculate metrics
+                mae = ForecastingMetrics.mae(test_data[:forecast_steps], forecast)
+                rmse = ForecastingMetrics.rmse(test_data[:forecast_steps], forecast)
+                smape = ForecastingMetrics.smape(test_data[:forecast_steps], forecast)
+                
+                results.append({
+                    'train_pct': pct,
+                    'train_size': train_size,
+                    'mae': mae,
+                    'rmse': rmse,
+                    'smape': smape,
+                    'training_time_sec': training_time
+                })
+                
+            except Exception as e:
+                print(f"Warning: Failed for {pct}% training data: {e}")
+                continue
+        
+        return pd.DataFrame(results)
+    
+    @staticmethod
+    def find_efficiency_breakpoint(
+        learning_curve_df: pd.DataFrame,
+        metric: str = 'mae',
+        threshold_pct: float = 0.95
+    ) -> Dict[str, Any]:
+        """
+        Find the minimum training data needed to achieve X% of best performance
+        
+        Args:
+            learning_curve_df: Output from learning_curve_experiment()
+            metric: Metric to analyze ('mae', 'rmse', or 'smape')
+            threshold_pct: Target performance as % of best (e.g., 0.95 = 95% of best)
+            
+        Returns:
+            Dictionary with breakpoint analysis
+        """
+        # Best performance (lowest error)
+        best_performance = learning_curve_df[metric].min()
+        target_threshold = best_performance / threshold_pct  # Allow slightly worse
+        
+        # Find first point that meets threshold
+        meets_threshold = learning_curve_df[learning_curve_df[metric] <= target_threshold]
+        
+        if len(meets_threshold) == 0:
+            return {
+                'breakpoint_pct': 100,
+                'breakpoint_size': learning_curve_df['train_size'].max(),
+                'efficiency_ratio': 1.0,
+                'message': 'All data needed for target performance'
+            }
+        
+        breakpoint_row = meets_threshold.iloc[0]
+        best_row = learning_curve_df.iloc[-1]  # 100% data
+        
+        return {
+            'breakpoint_pct': int(breakpoint_row['train_pct']),
+            'breakpoint_size': int(breakpoint_row['train_size']),
+            'breakpoint_mae': float(breakpoint_row['mae']),
+            'best_mae': float(best_row['mae']),
+            'efficiency_ratio': float(best_row['train_size'] / breakpoint_row['train_size']),
+            'performance_gap_pct': float((breakpoint_row['mae'] - best_row['mae']) / best_row['mae'] * 100),
+            'message': f"Only {breakpoint_row['train_pct']:.0f}% of data needed for {threshold_pct*100:.0f}% performance"
+        }
+    
+    @staticmethod
+    def analyze_data_cost_tradeoff(
+        learning_curve_df: pd.DataFrame,
+        cost_per_datapoint: float = 1.0
+    ) -> pd.DataFrame:
+        """
+        Analyze cost-benefit tradeoff of collecting more data
+        
+        Args:
+            learning_curve_df: Output from learning_curve_experiment()
+            cost_per_datapoint: Cost to collect one data point (relative units)
+            
+        Returns:
+            DataFrame with marginal benefit per data point
+        """
+        df = learning_curve_df.copy()
+        df['data_cost'] = df['train_size'] * cost_per_datapoint
+        
+        # Marginal improvement per additional data point
+        df['mae_improvement'] = df['mae'].iloc[-1] - df['mae']  # vs best model
+        df['marginal_benefit'] = df['mae_improvement'] / df['train_size']
+        df['cost_efficiency'] = df['mae_improvement'] / df['data_cost']
+        
+        return df[['train_pct', 'train_size', 'mae', 'mae_improvement', 
+                   'data_cost', 'marginal_benefit', 'cost_efficiency']]
+
+
 if __name__ == "__main__":
     print("Metrics module ready. Import and use in notebooks.")

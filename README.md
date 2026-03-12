@@ -68,6 +68,7 @@ Dự án khai phá dữ liệu để phân tích và dự báo nhu cầu năng l
 2. **Phân cụm (Clustering)**: Phân loại hộ gia đình theo profile tiêu thụ (night-owl, peak-heavy, stable...)
 3. **Phát hiện bất thường (Anomaly Detection)**: Tìm ngày có mức tiêu thụ bất thường
 4. **Dự báo (Time Series Forecasting)**: Dự báo nhu cầu năng lượng tương lai
+5. **Training Data Efficiency Analysis**: Phân tích hiệu quả sử dụng dữ liệu (tương đương Semi-Supervised Learning)
 
 ## Cấu trúc project
 ```
@@ -156,6 +157,32 @@ Mở Jupyter và chạy lần lượt các notebook trong thư mục `notebooks/
 - Các cụm profile tiêu thụ điện khác nhau
 - Phát hiện các ngày bất thường (F1-score, phân tích theo mùa)
 - Dự báo nhu cầu năng lượng (MAE, RMSE, sMAPE)
+- **Learning curve analysis**: Hiệu quả sử dụng dữ liệu training (10-100% data)
+
+## Phân tích Training Data Efficiency (Semi-Supervised Equivalent)
+
+### Mục đích
+Xác định lượng dữ liệu training tối thiểu cần thiết để đạt được hiệu suất dự báo chấp nhận được.
+
+**Tương đương với Semi-Supervised Learning**:
+- **Classification**: Sử dụng 10-30% labeled data
+- **Forecasting (Chúng ta)**: Sử dụng 10-100% training time-series data
+
+### Kết quả chính
+- 📊 **Learning Curve**: Hiệu suất model (MAE) theo % dữ liệu training
+- 🎯 **Efficiency Breakpoint**: Xác định % data tối thiểu cần thiết
+- 💰 **Cost-Benefit Analysis**: Chi phí thu thập dữ liệu vs cải thiện hiệu suất
+- ⏱️ **Training Time**: Thời gian training theo kích thước dữ liệu
+
+### File kết quả
+- `outputs/tables/learning_curve_analysis.csv` - Kết quả experiment
+- `outputs/figures/learning_curve_analysis.png` - Biểu đồ learning curve
+- `scripts/test_learning_curve.py` - Script test độc lập
+
+### Business Value
+1. **Giảm chi phí**: Thu thập ít dữ liệu hơn mà vẫn đạt hiệu suất tốt
+2. **Training nhanh hơn**: Model nhỏ gọn, retrain nhanh trong production
+3. **Resource-efficient**: Phù hợp với môi trường hạn chế tài nguyên
 
 ## Nhóm thực hiện
 - Thành viên 1: Nguyễn Việt Quang

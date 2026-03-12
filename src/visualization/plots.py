@@ -500,6 +500,71 @@ class PowerVisualizer:
         
         return fig
     
+    def plot_learning_curve(
+        self,
+        learning_curve_df: pd.DataFrame,
+        metric: str = 'mae',
+        filename: Optional[str] = None,
+        figsize: Tuple[int, int] = (12, 5)
+    ) -> plt.Figure:
+        """
+        Plot learning curve: Model performance vs training data size
+        
+        Args:
+            learning_curve_df: DataFrame from TrainingDataEfficiencyAnalyzer
+            metric: Metric to plot ('mae', 'rmse', or 'smape')
+            filename: Output filename
+            figsize: Figure size
+            
+        Returns:
+            Figure object
+        """
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+        
+        # Plot 1: MAE vs Training Data Percentage
+        ax1.plot(learning_curve_df['train_pct'], learning_curve_df[metric], 
+                 marker='o', linewidth=2, markersize=8, color='#2E86AB')
+        ax1.fill_between(learning_curve_df['train_pct'], learning_curve_df[metric], 
+                         alpha=0.3, color='#2E86AB')
+        ax1.set_xlabel('Training Data (%)', fontsize=11, fontweight='bold')
+        ax1.set_ylabel(f'{metric.upper()}', fontsize=11, fontweight='bold')
+        ax1.set_title('Learning Curve: Performance vs Training Data Size', 
+                     fontsize=12, fontweight='bold')
+        ax1.grid(True, alpha=0.3, linestyle='--')
+        ax1.set_xticks(learning_curve_df['train_pct'])
+        
+        # Annotate best and worst
+        best_idx = learning_curve_df[metric].idxmin()
+        worst_idx = learning_curve_df[metric].idxmax()
+        ax1.scatter(learning_curve_df.loc[best_idx, 'train_pct'], 
+                   learning_curve_df.loc[best_idx, metric],
+                   color='green', s=150, marker='*', zorder=5, label='Best')
+        ax1.scatter(learning_curve_df.loc[worst_idx, 'train_pct'], 
+                   learning_curve_df.loc[worst_idx, metric],
+                   color='red', s=150, marker='X', zorder=5, label='Worst')
+        ax1.legend(loc='best')
+        
+        # Plot 2: Training Time vs Data Size
+        ax2.bar(learning_curve_df['train_pct'].astype(str), 
+                learning_curve_df['training_time_sec'],
+                color='#A23B72', alpha=0.7)
+        ax2.set_xlabel('Training Data (%)', fontsize=11, fontweight='bold')
+        ax2.set_ylabel('Training Time (seconds)', fontsize=11, fontweight='bold')
+        ax2.set_title('Training Time vs Data Size', fontsize=12, fontweight='bold')
+        ax2.grid(True, alpha=0.3, axis='y', linestyle='--')
+        
+        # Add value labels on bars
+        for i, (pct, time) in enumerate(zip(learning_curve_df['train_pct'], 
+                                             learning_curve_df['training_time_sec'])):
+            ax2.text(i, time, f'{time:.2f}s', ha='center', va='bottom', fontsize=9)
+        
+        plt.tight_layout()
+        
+        if filename:
+            self._save_figure(fig, filename)
+        
+        return fig
+    
     def _save_figure(self, fig: plt.Figure, filename: str) -> None:
         """
         Save figure to output directory

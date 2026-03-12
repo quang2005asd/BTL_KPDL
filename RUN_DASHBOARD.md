@@ -29,7 +29,7 @@ python scripts/run_pipeline.py
 ## Bước 3: Chạy Dashboard
 
 ```bash
-streamlit run app.py
+python -m streamlit run app.py
 ```
 
 Dashboard sẽ mở tại: **http://localhost:8501**
