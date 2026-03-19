@@ -67,12 +67,36 @@ class PowerForecaster:
             val_days = self.forecast_config.get('validation_size_days', 0)
         
         y = df[target_col].copy()
-        
+        y = y.sort_index()
+
+        # Convert day-based split sizes to number of samples based on data frequency.
+        # If the index is not a DatetimeIndex, we fall back to interpreting values as samples.
+        steps_per_day = 1
+        if isinstance(y.index, pd.DatetimeIndex) and len(y.index) > 1:
+            deltas = y.index.to_series().diff().dropna()
+            if not deltas.empty:
+                step = deltas.median()
+                if pd.notna(step) and step > pd.Timedelta(0):
+                    steps_per_day = int(round(pd.Timedelta(days=1) / step))
+                    if steps_per_day < 1:
+                        steps_per_day = 1
+
+        test_size = int(test_days) * steps_per_day
+        val_size = int(val_days) * steps_per_day
+
         # Calculate split points
-        test_start = len(y) - test_days
-        
-        if val_days > 0:
-            val_start = test_start - val_days
+        test_start = len(y) - test_size
+        if test_start <= 0:
+            raise ValueError(
+                f"Not enough data for split: len={len(y)}, test_size={test_size}"
+            )
+
+        if val_size > 0:
+            val_start = test_start - val_size
+            if val_start <= 0:
+                raise ValueError(
+                    f"Not enough data for split: len={len(y)}, val_size={val_size}, test_size={test_size}"
+                )
             train = y.iloc[:val_start]
             val = y.iloc[val_start:test_start]
             test = y.iloc[test_start:]
@@ -82,6 +106,8 @@ class PowerForecaster:
             test = y.iloc[test_start:]
         
         print(f"Data split:")
+        if steps_per_day > 1:
+            print(f"  (Interpreting test_days/val_days as days with ~{steps_per_day} samples/day)")
         print(f"  Train: {len(train)} samples ({train.index[0]} to {train.index[-1]})")
         if val is not None:
             print(f"  Validation: {len(val)} samples ({val.index[0]} to {val.index[-1]})")
